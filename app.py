@@ -20,13 +20,13 @@ LOCAL_DB = {
 }
 
 # ===========================================================
-# DATABASE CONNECTION HANDLER (using psycopg)
+# DATABASE CONNECTION HANDLER (using psycopg 3)
 # ===========================================================
 def get_db_connection():
     try:
         DATABASE_URL = os.getenv("DATABASE_URL")
         if DATABASE_URL:
-            # psycopg can use a direct connection string
+            # psycopg 3 accepts DATABASE_URL directly
             conn = psycopg.connect(DATABASE_URL)
             print("🌍 Connected to RAILWAY PostgreSQL")
             return conn
@@ -45,7 +45,7 @@ def get_db_connection():
         return None
 
 # ===========================================================
-# HOME PAGE (events display)
+# HOME PAGE
 # ===========================================================
 @app.route('/')
 def index():
