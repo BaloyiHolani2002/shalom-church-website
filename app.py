@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-import psycopg2
+import psycopg
 from datetime import datetime
 import os
 from urllib.parse import urlparse
@@ -20,26 +20,20 @@ LOCAL_DB = {
 }
 
 # ===========================================================
-# DATABASE CONNECTION HANDLER
+# DATABASE CONNECTION HANDLER (using psycopg)
 # ===========================================================
 def get_db_connection():
     try:
         DATABASE_URL = os.getenv("DATABASE_URL")
         if DATABASE_URL:
-            result = urlparse(DATABASE_URL)
-            conn = psycopg2.connect(
-                database=result.path[1:],
-                user=result.username,
-                password=result.password,
-                host=result.hostname,
-                port=result.port
-            )
+            # psycopg can use a direct connection string
+            conn = psycopg.connect(DATABASE_URL)
             print("🌍 Connected to RAILWAY PostgreSQL")
             return conn
         else:
-            conn = psycopg2.connect(
+            conn = psycopg.connect(
                 host=LOCAL_DB['host'],
-                database=LOCAL_DB['database'],
+                dbname=LOCAL_DB['database'],
                 user=LOCAL_DB['user'],
                 password=LOCAL_DB['password'],
                 port=LOCAL_DB['port']
@@ -51,7 +45,7 @@ def get_db_connection():
         return None
 
 # ===========================================================
-# HOME PAGE (events display only)
+# HOME PAGE (events display)
 # ===========================================================
 @app.route('/')
 def index():
@@ -91,7 +85,6 @@ def admin_login():
         try:
             cursor.execute("SELECT user_id, password, role FROM users WHERE username = %s", (username,))
             user = cursor.fetchone()
-            # Plain text comparison
             if user and user[1] == password:
                 session['admin_logged_in'] = True
                 session['user_id'] = user[0]
@@ -126,7 +119,7 @@ def admin_dashboard():
 def create_admin():
     if request.method == 'POST':
         username = request.form['username']
-        password = request.form['password']   # stored as plain text
+        password = request.form['password']
         role = request.form['role']
 
         conn = get_db_connection()
@@ -208,7 +201,6 @@ def leadership():
 def sermons():
     return render_template('sermons.html')
 
-
 @app.route('/testimony')
 def testimony():
     conn = get_db_connection()
@@ -221,7 +213,6 @@ def testimony():
     testimonies = []
     for row in rows:
         created_at = row[3]
-        # If it's a string, parse it into a datetime object
         if isinstance(created_at, str):
             try:
                 created_at = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
@@ -230,8 +221,6 @@ def testimony():
         testimonies.append((row[0], row[1], row[2], created_at))
 
     return render_template('testimony.html', testimonies=testimonies)
-
-
 
 @app.route('/submit-testimony', methods=['POST'])
 def submit_testimony():
@@ -405,7 +394,7 @@ def api_health():
         return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
 
 # ===========================================================
-# DATABASE INITIALIZATION (add testimonies table)
+# DATABASE INITIALIZATION
 # ===========================================================
 @app.route('/init-db')
 def init_db():
